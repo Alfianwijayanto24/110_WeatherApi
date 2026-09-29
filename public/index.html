@@ -1,38 +1,78 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Geolocation</title>
 </head>
 <body>
-    
-    <h3>Nama : Alfian wijayanto</h3>
-    <h3>NIM : 20240140110</h3>
 
-    <p>
-        kota : 
-        <span id="lokasi"></span>
-    </p>
+    <h3>Nama : Alfian Wijayanto</h3>
+    <h3>NIM : 20240140110</h3>
 
     <hr>
 
     <p>
-        koordinat :
-        <span id="negara"></span>
+        Lokasi :
+        <input type="text" id="lokasi" value="Bandung City" placeholder="Cari kota / kecamatan">
+        <button id="btnCari">Cari</button>
     </p>
 
+    <p id="status"></p>
+
+    <p>Negara : <span id="negara">-</span></p>
+    <p>Provinsi : <span id="provinsi">-</span></p>
+    <p>Kecamatan : <span id="kecamatan">-</span></p>
+    <p>Longitude : <span id="longitude">-</span></p>
+    <p>Latitude : <span id="latitude">-</span></p>
+
     <script>
-        fetch('/api/lokasi')
-            .then(response => response.json())
-            .then(data => {
-                console.log(data);
-                document.getElementById('lokasi').innerHTML = data.kota;
-                document.getElementById('negara').innerHTML = data.koordinat;
-            })
-            .catch(error => {
+        const inputLokasi = document.getElementById('lokasi');
+        const status = document.getElementById('status');
+
+        function isi(id, nilai) {
+            document.getElementById(id).textContent = nilai ?? '-';
+        }
+
+        async function cariLokasi() {
+            const kota = inputLokasi.value.trim();
+            if (!kota) {
+                status.textContent = 'Masukkan nama lokasi dulu.';
+                return;
+            }
+
+            status.textContent = 'Mencari...';
+
+            try {
+                const response = await fetch('/api/lokasi?kota=' + encodeURIComponent(kota));
+                const data = await response.json();
+
+                if (!response.ok) {
+                    status.textContent = data.message || 'Terjadi kesalahan.';
+                    return;
+                }
+
+                status.textContent = '';
+                isi('negara', data.negara);
+                isi('provinsi', data.provinsi);
+                isi('kecamatan', data.kecamatan);
+                isi('longitude', data.longitude);
+                isi('latitude', data.latitude);
+            } catch (error) {
                 console.error('Error:', error);
-            });
+                status.textContent = 'Gagal terhubung ke server.';
+            }
+        }
+
+        document.getElementById('btnCari').addEventListener('click', cariLokasi);
+
+        // Tekan Enter di kolom input juga mencari
+        inputLokasi.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') cariLokasi();
+        });
+
+        // Muat data awal saat halaman dibuka
+        cariLokasi();
     </script>
 </body>
 </html>

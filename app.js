@@ -9,22 +9,41 @@ const PORT = 3000;
 
 app.use(express.static(path.join(__dirname, "public")));
 
+// Ambil nama dari context MapTiler berdasarkan tipe (id-nya berformat "tipe.12345")
+function cariContext(context = [], ...tipe) {
+  for (const t of tipe) {
+    const item = context.find((c) => c.id && c.id.startsWith(`${t}.`));
+    if (item) return item.text;
+  }
+  return null;
+}
+
 app.get("/api/lokasi", async (req, res) => {
-  const kota = "Bandung City";
+  // Bisa diganti lewat URL: /api/lokasi?kota=Kasihan
+  const kota = req.query.kota || "Bandung City";
   const apiKey = process.env.MAPTILER_API_KEY;
   const baseUrl = process.env.MAPTILER_BASE_URL;
 
-  const url = `${baseUrl}/${kota}.json?key=${apiKey}`;
+  const url = `${baseUrl}/${encodeURIComponent(kota)}.json`;
 
   try {
-    const response = await axios.get(url);
-    const data = response.data;
-    const lokasi = data.features[0].matching_text;
-    const koordinat = data.features[0].geometry.coordinates;
+    const response = await axios.get(url, { params: { key: apiKey } });
+    const feature = response.data.features?.[0];
+
+    if (!feature) {
+      return res.status(404).json({ message: "Lokasi tidak ditemukan" });
+    }
+
+    const context = feature.context || [];
+    const [longitude, latitude] = feature.geometry.coordinates; // urutan GeoJSON: [lng, lat]
 
     res.json({
-      kota: lokasi,
-      koordinat: koordinat,
+      kota: feature.matching_text || feature.text,
+      negara: cariContext(context, "country"),
+      provinsi: cariContext(context, "region"),
+      kecamatan: cariContext(context, "municipal_district", "locality", "county"),
+      longitude,
+      latitude,
     });
   } catch (error) {
     console.error(error.message);
